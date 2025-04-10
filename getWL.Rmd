@@ -1,0 +1,142 @@
+---
+title: "global warming levels for the CMIP5 exercise"
+author: "Guillaume Evin"
+date: "09/04/2026"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(RNetCDF)
+```
+
+## List of projections from EUROCORDEX
+
+```{r}
+# load df scenarios
+dfScenarios = read.csv('../GlobalTAS/listSimu.csv',sep=";")
+
+# CanESM2 and GFDL-ESM2G only have 2 and 1 runs available, respectively
+selRuns = !dfScenarios$GCMtag%in%c("CanESM2","GFDL-ESM2G")&!dfScenarios$RCMtag%in%c("ALARO-0","ALADIN53")
+scenAvail = dfScenarios[selRuns,]
+head(scenAvail)
+
+# number of scenarios
+nS = nrow(scenAvail)
+```
+
+## Global temperatures from the corresponding GCMs
+Future climate projections are usually obtained using simulations from GCM
+at the planetary level. These runs can be used to obtained to get average
+global temperature at the planetary level "in the world of the model". The
+GCMs have inherent biases even for the industrial period.
+
+```{r}
+vecYearsGT = 1860:2100
+nY = length(vecYearsGT)
+
+# read global average annual tas. For each GCM, the global mean surface temperature can be obtained from https://climexp.knmi.nl/CMIP5/Tglobal/ (KNMI, 2022).
+gtas = matrix(nrow = nS, ncol = nY)
+for(i in 1:nS){
+ df.i = scenAvail[i,]
+  
+  # read chain for this scenario
+  ff.rcp = paste0("../GlobalTAS/global_tas_Amon_",df.i$GCMtag,"_",df.i$RCP,"_",df.i$Member,".dat")
+  
+  # global_tas_Amon_EC-EARTH_rcp26_r1i1p1.dat not available
+  # we take another member
+  if(i==98){
+    ff.rcp = paste0("../GlobalTAS/","global_tas_Amon_EC-EARTH_rcp26_r12i1p1.dat")
+  }
+  tab.rcp = read.table(file = ff.rcp,skip = 3)
+  
+  # trim period to 1860-2100
+  d0 = which(tab.rcp$V1==1860)
+  d1 = which(tab.rcp$V1==2100)
+  tab.rcp.trim = tab.rcp[d0:d1,]
+  
+  # build df year, average annual temperature
+  gtas[i,] = apply(tab.rcp.trim[,2:13],1,mean)-273.15
+}
+```
+
+## Application of smoothing.spline
+Smoothing plines are applied for each combination GCM/RCP.
+
+```{r}
+GCM.spline = list()
+
+# unique GCM/SSP combinations
+scen_GCM_RCP = unique(scenAvail[,c(3,7)])
+
+# loop over the scenarios
+for(i in 1:nrow(scen_GCM_RCP)){
+  zz = scenAvail$GCMtag == scen_GCM_RCP$GCMtag[i]&scenAvail$RCP == scen_GCM_RCP$RCP[i]
+  gtasi = gtas[zz,]
+  
+  # apply spline to smooth the signal + conversion from kelvin to celsius
+  tag=paste0(scen_GCM_RCP[i,],collapse = "_")
+  xx = as.vector(replicate(n=sum(zz),1860:2100))
+  yy = as.vector(t(gtasi))
+  GCM.spline[[tag]] = smooth.spline(x = xx,y = yy, df = 6)
+}
+```
+
+## Observed global temperatures from HadCRUT5
+HadCRUT5 is a gridded dataset of global historical surface temperature anomalies relative to a 1961-1990 reference period. Data are available for each month from January 1850 onwards, on a 5 degree grid and as global and regional average time series. The dataset is a collaborative product of the Met Office Hadley Centre and the Climatic Research Unit at the University of East Anglia.
+
+These data can be downloaded in different formats at the follosing url:
+
+https://www.metoffice.gov.uk/hadobs/hadcrut5/data/HadCRUT.5.0.2.0/download.html
+
+Here, I consider the anomalies at the global scale with respect to 1961-1990.
+
+Note that absolute temperatures are not provided in HadCRUT5. Most reanalaysis of past temperatures consider anomalies with respect to the period 1961-1990 because anomalies have better spatial correlations and ease inter-product comparisons:
+
+https://www.realclimate.org/index.php/archives/2014/12/absolute-temperatures-and-relative-anomalies/
+
+I consider here a rough estimate of 14°C for the period 1961-1990 in order to obtain absolute observed global temperatures, as provided in:
+
+https://agupubs.onlinelibrary.wiley.com/doi/abs/10.1029/1999RG900002
+
+```{r}
+# read raw HadCRUT5 data
+HadCRUT5.raw = read.csv(file = "../GlobalTAS/HadCRUT.5.0.2.0.analysis.summary_series.global.annual.csv")
+HadCRUT5.anom.time = HadCRUT5.raw$Time
+
+# add 14°C in order to obtain absolute temperature values
+HadCRUT5.val = HadCRUT5.raw$Anomaly..deg.C.+14
+
+# get smooth estimates using a spline model
+HadCRUT5.spline = smooth.spline(x = HadCRUT5.anom.time,y = HadCRUT5.val,df = 6)
+```
+
+
+## Pre-processing of global temperatures: a common value for the reference period
+Discrepancies of global temperature values for the reference period translate into the absence of agreement of any indicator (e.g. regional temperature/precipitation/flow values) for the reference period. For example, in 1990, global temperature vary between 13°C and 15°C in the world of the GCMs.
+
+For QUALYPSO, an agreement for the reference period is essential in order to attribute the different uncertainties with respect to the differences with this reference period. The following post-processing aims at providing a set of global temperatures which are in agreement for the chosen reference year (e.g. 1990), which can be expressed as a global warming level with respect to the industrial period, according to HadCRUT5 data. For each GCM, we simply propose to compute anomalies of global temperatures with respect to the reference period and add the global temperature from HadCRUT5 in 1860 in order to obtain warming levels with respect to the industrial period that are in agreement in 1990.
+
+
+```{r}
+# reference year
+globalTempRef = list()
+
+
+# loop over the scenarios
+for(i in 1:nrow(scen_GCM_RCP)){
+  # Anomaly of global temp of the GCM: future value - value in 1860-1900
+  tag=paste0(scen_GCM_RCP$GCMtag[i],"_",scen_GCM_RCP$RCP[i])
+  gcmGT = GCM.spline[[tag]]$y
+  anom.GCM = gcmGT-mean(gcmGT[1:41])
+  globalTempRef[[tag]] = anom.GCM
+}
+```
+
+
+
+## Export
+```{r}
+save(vecYearsGT,HadCRUT5.spline,GCM.spline,globalTempRef,scen_GCM_RCP,scenAvail,gtas,
+     file="../GlobalTAS/GlobalTempSmooth.RData")
+```

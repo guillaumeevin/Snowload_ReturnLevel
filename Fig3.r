@@ -29,7 +29,7 @@ vec.chain = names(mycol.chain)
 ###################
 # start plot
 ###################
-
+pdf("../Figures/Fig3_SWEmax_2NUTS.pdf",width=9,height=12)
 par(mar=c(4.5,5.5,4.5,0.5),mfrow=c(2,1))
 
 #_______________________
@@ -45,7 +45,7 @@ l = readRDS(file="./NUTSLoireAtlantique0m.rds")
 
 plot(-1,-1,xlim=c(0.3,5.6),ylim=c(0,47),
      main="(a) SWE maxima in Loire-Atlantique, France (0-m elevation)",cex.main=1.5,
-     xlab="Global warming level (°C)",ylab="Annual maxima of SWE (mm w.e.)", 
+     xlab="Global warming level (Â°C)",ylab="Annual maxima of SWE (mm w.e.)", 
      cex.axis=1.3,cex.lab=1.5)
 
 for(i in 1:length(vec.chain)){
@@ -72,7 +72,7 @@ l = readRDS(file="./NUTSOsttirol2000m.rds")
 
 plot(-1,-1,xlim=c(0.3,5.6),ylim=c(0,600),
      main="(a) SWE maxima in Osttirol, Austria (2000-m elevation)",cex.main=1.5,
-     xlab="Global warming level (°C)",ylab="Annual maxima of SWE (mm w.e.)", 
+     xlab="Global warming level (Â°C)",ylab="Annual maxima of SWE (mm w.e.)", 
      cex.axis=1.3,cex.lab=1.5)
 
 for(i in 1:length(vec.chain)){
@@ -81,3 +81,5 @@ for(i in 1:length(vec.chain)){
   lines(df$gwl,df$maxSWE,lty=1,lwd=2,col=mycol.chain[[chain]])
 }
 grid()
+
+dev.off()

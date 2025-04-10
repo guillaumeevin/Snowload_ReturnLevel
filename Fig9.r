@@ -125,6 +125,7 @@ for(i in 1:length(vec.nut)){
 # figure: one column per NUTS3 area, one line per simulation chain
 # the last line gives the overall estimate and the overall uncertainty [5%, 95%]
 #_______________________________________________________________________________
+pdf("../Figures/Fig9_exUnc.pdf",width = 8,height = 10)
 par(mfcol=c(n.chain+1,2),mar=c(0,3,0.5,0),oma=c(12,3,2,0.5))
 for(i in 1:2){
   # y limits
@@ -198,7 +199,7 @@ for(i in 1:2){
 
 mtext(text = c("Loire-Atlantique, France (0 m)","Osttirol, Austria (2000 m)"),
       side = 3, at=c(0.28,0.75), outer = T,line = 0.5)
-mtext(text = "Global warming levels (°C)",side = 1, outer = T,line = 3,cex=1.5)
+mtext(text = "Global warming levels (?C)",side = 1, outer = T,line = 3,cex=1.5)
 mtext(text = "Return levels of SWE (mm w.e.)",side = 2, outer = T,line = 1,cex=1.5)
 
 # legend
@@ -208,3 +209,4 @@ legend("bottom",bty="n",
        legend=c("Annual SWE maxima","Best estimate","Bootstrap estimates","90% uncertainty interval"),
        title="",seg.len=4,cex=1.5,col=c("black","black","gray90","gray"),
        lwd=c(NA,3,1,10),lty=c(NA,1,1,1),pch=c(20,NA,NA,NA))
+dev.off()

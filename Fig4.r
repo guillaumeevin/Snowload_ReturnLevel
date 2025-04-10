@@ -44,7 +44,7 @@ threshold = 1
 # - maxSWE: corresponding Annual maxima of daily SWE values (mm w.e.)
 l = readRDS(file="./NUTSLoireAtlantique0m.rds")
 
-# we compute the return levels for warming levels ranging from 0°C to 6°C
+# we compute the return levels for warming levels ranging from 0?C to 6?C
 pred.gt = seq(from=0,to=6,by=0.1)
 
 # vector of return levels and corresponding colors
@@ -55,6 +55,7 @@ n.RL = length(pred.RL)
 # for this NUTS3 area, three models are compared: pEXP, pGA and pIG
 n.model = 3
 
+pdf("../Figures/Fig4_exFitWithZeros.pdf",width = 8,height = 8)
 par(mfrow=c(n.chain,n.model),mar=c(0,0,0,0),oma=c(4,4,2,10))
 for(i.chain in 1:n.chain){
   # GCM / RCM
@@ -108,7 +109,7 @@ for(i.chain in 1:n.chain){
 }
 mtext(text = c("pEXP","pGA","pIG"),
       side = 3, at=seq(from=0.15,to=0.85,length.out=n.model), outer = T,line = 0.5)
-mtext(text = "Global warming levels (°C)",side = 1, outer = T,line = 2.5,cex=1.5)
+mtext(text = "Global warming levels (Â°C)",side = 1, outer = T,line = 2.5,cex=1.5)
 mtext(text = "Return levels of SWE (mm w.e.)",side = 2, outer = T,line = 2,cex=1.5)
 
 
@@ -117,3 +118,5 @@ plot(0, 0, type = 'l', bty = 'n', xaxt = 'n', yaxt = 'n')
 legend("bottomright",bty="n",legend=c("0.50","0.75","0.90","0.98"),
        title="Probability",
        seg.len=4,cex=1.2,col=col.RL,lty=1,lwd=3)
+
+dev.off()
